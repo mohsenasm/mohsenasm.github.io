@@ -1,10 +1,160 @@
 <!DOCTYPE html>
 <html>
+<style>
+    body {
+        background-color: rgb(100, 100, 100);
+        font-family: Helvetica, Arial, sans-serif;
+    }
+
+    .form .title {
+        margin-top: 2rem;
+
+        font-size: 1rem;
+        color: #ffffff;
+    }
+
+    .form .password {
+        font-size: 1rem;
+        border-radius: 0.5rem;
+        margin: 0px;
+        border-width: 0px;
+
+        margin-top: 1rem;
+        padding: 0.5rem;
+        width: 15rem;
+        box-sizing: border-box;
+
+        background-color: #ffffff;
+    }
+
+    .form .button {
+        font-size: 1rem;
+        border-radius: 0.5rem;
+        border-width: 0.2rem;
+        border-color: rgb(35, 35, 35);
+        border-style: solid;
+        color: rgb(35, 35, 35);
+        text-align: center;
+        background-color: rgb(126, 126, 126);
+
+        padding: 0.5rem;
+        width: 5rem;
+        box-sizing: border-box;
+    }
+
+    .alarm {
+        margin-top: 2rem;
+
+        font-size: 1rem;
+        font-weight: 700;
+        color: #ff5353;
+    }
+
+    .list {
+        margin-top: 2rem;
+
+        font-size: 1rem;
+        color: #ffffff;
+    }
+
+    .list li {
+        margin-top: 0.75rem;
+    }
+</style>
+
+<script src="/js/sha256.min.js"></script>
+<script src="/js/aes.js"></script>
+
 <body>
+    <div id="form" class="form">
+        <div class="title">Login Form</div>
+        <input id="password" class="password" placeholder="password" type="password" autocomplete="off" />
+        <input id="button" class="button" type="button" value="Login" onclick="login()" />
+    </div>
 
-<h1>Links for Me</h1>
+    <div id="alarm" class="alarm" style="display: none;">Your password is wrong</div>
 
-<p><a href="https://docs.google.com/document/d/12LYZDZ98SATo589wKf4SbiknH2kQoHVXlh7jWnlpIzM/edit?usp=sharing">https://docs.google.com/document/d/12LYZDZ98SATo589wKf4SbiknH2kQoHVXlh7jWnlpIzM/edit?usp=sharing</a></p>
+    <ul id="list" class="list"></ul>
 
+    <div id="editor" class="editor" style="display: none;">
+        <textarea id="editor-plain" rows="10" cols="50"></textarea>
+        <br />
+        <input id="editor-cipher"></textarea>
+    </div>
+
+    <script>
+        // generated after login or by removing `style="display: none;"` from editor.
+        let encDataInHex = "eda9a238688d77001525eceee3dde756f80abac7e24c4a92d612c62f6c2fcea22263b0a31904ab4e808911d8e163ba68b1ddda175d5a4e7032b9de19296b741c42c56409b759d32ca32efc72c39e2861";
+
+        let formElement = document.getElementById("form");
+        let passwordElement = document.getElementById("password");
+        let alarmElement = document.getElementById("alarm");
+        let listElement = document.getElementById("list");
+        let editorElement = document.getElementById("editor");
+        let editorCipherElement = document.getElementById("editor-cipher");
+        let editorPlainElement = document.getElementById("editor-plain");
+        let key = [];
+
+        function encStrToHex(plainStr) {
+            let textBytes = aesjs.utils.utf8.toBytes(plainStr);
+            let aesCtr = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(5));
+            let encryptedBytes = aesCtr.encrypt(textBytes);
+            return aesjs.utils.hex.fromBytes(encryptedBytes);
+        }
+
+        function decHexToStr(encryptedHex) {
+            let encryptedBytes2 = aesjs.utils.hex.toBytes(encryptedHex);
+            let aesCtr2 = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(5));
+            let decryptedBytes = aesCtr2.decrypt(encryptedBytes2);
+            return aesjs.utils.utf8.fromBytes(decryptedBytes);
+        }
+
+        function login() {
+            key = sha256.array("namak-for-salt " + passwordElement.value);
+
+            let data = decHexToStr(encDataInHex);
+
+            formElement.remove();
+
+            if (data.slice(0, 10) !== "----------") {
+                alarmElement.style = ""; // show alarm
+            } else { // data is valid
+                editorElement.style = ""; // show editor
+                editorPlainElement.value = data;
+                editorCipherElement.value = encDataInHex;
+
+                let list = data.split('----------\n');
+                for (let i = 0; i < list.length; i++) {
+                    const itemPair = list[i];
+                    if (itemPair.length === 0) {
+                        continue;
+                    }
+                    const _itemPair = itemPair.split('\n');
+                    const name = _itemPair[0];
+                    const link = _itemPair[1];
+
+                    const li = document.createElement("li");
+                    const a = document.createElement("a");
+                    const textnode = document.createTextNode(name + ": " + link);
+                    a.appendChild(textnode);
+                    a.href = link;
+                    li.appendChild(a);
+                    listElement.appendChild(li);
+                }
+            }
+        }
+
+        passwordElement.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                login();
+            }
+        });
+
+        editorPlainElement.addEventListener("keydown", function (event) {
+            editorCipherElement.value = encStrToHex(editorPlainElement.value);
+        });
+    </script>
 </body>
+
 </html>
